@@ -87,7 +87,9 @@ export default function PassCard({ refCode }: { refCode: string }) {
       <div className="bg-white border border-blue-200 border-t-0 rounded-b-xl px-4 py-4 flex items-center gap-3">
         <img src="/pass-300.png" alt="PASS" className="w-12 h-12" />
         <div className="text-sm">
-          <p className="font-semibold text-gray-900">{row.pass_type ?? '프라'} 멤버십</p>
+          <p className="font-semibold text-gray-900">
+  {(row.pass_type ?? '이모탈').replace(/ ?프라/g, '')} 멤버십
+</p>
           {created && <p className="text-xs text-gray-500">구입일 : {created}</p>}
 
           {warningText ? (

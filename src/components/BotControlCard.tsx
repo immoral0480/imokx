@@ -9,17 +9,17 @@ import { PauseCircle, PlayCircle } from "lucide-react";
 type Props = {
   refCode: string;
   isBotRunning: boolean;
-  symbol: string;
-  entryAmount: string | number;
-  hasApi: boolean; // coinw api key/secret 존재 여부
-  onRunningChange?: (running: boolean) => void; // 실행/중지 후 부모 갱신
+  instId: string;                 // ✅ 변경: symbol -> instId (예: "XRP-USDT-SWAP")
+  entryQty: string | number;      // ✅ 변경: entryAmount -> entryQty (계약 수, 정수)
+  hasApi: boolean;                // OKX api key/secret/passphrase 저장 여부
+  onRunningChange?: (running: boolean) => void;
 };
 
 export default function BotControlCard({
   refCode,
   isBotRunning,
-  symbol,
-  entryAmount,
+  instId,
+  entryQty,
   hasApi,
   onRunningChange,
 }: Props) {
@@ -27,30 +27,40 @@ export default function BotControlCard({
   const [showStopModal, setShowStopModal] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const amtNum = useMemo(() => parseFloat(String(entryAmount)), [entryAmount]);
+  const qtyNum = useMemo(() => Number(entryQty), [entryQty]);
+  const qtyValid = Number.isInteger(qtyNum) && qtyNum > 0;
+
   const statusLabel = isBotRunning ? "실행 중" : "중지됨";
   const statusPill = isBotRunning ? "RUNNING" : "STOPPED";
 
   async function doStart() {
     if (!refCode) return;
     if (!hasApi) {
-      alert("❗ 먼저 COINW API를 저장해주세요.");
+      alert("❗ 먼저 OKX API를 저장해주세요.");
       return;
     }
-    if (!symbol || isNaN(amtNum) || amtNum <= 0) {
-      alert("❗ 봇 세팅(심볼/수량)을 먼저 저장해주세요.");
+    if (!instId) {
+      alert("❗ 거래 인스트루먼트를 먼저 저장해주세요.");
+      return;
+    }
+    if (!qtyValid) {
+      alert("❗ 진입 계약 수(entry_qty)는 1 이상의 정수여야 합니다.");
       return;
     }
 
     setBusy(true);
     try {
+      // ✅ 실행 플래그: is_running → enabled
       await supabase
         .from("bot_settings")
         .upsert(
-          { ref_code: refCode, is_running: true, updated_at: new Date().toISOString() },
+          { ref_code: refCode, enabled: true, updated_at: new Date().toISOString() },
           { onConflict: "ref_code" }
         );
+
       onRunningChange?.(true);
+
+      // 파이썬 매니저에 실제 시작 신호(있으면)
       startBot(refCode).catch((e) => console.warn("startBot error:", e));
       alert("🚀 봇 실행 시작됨");
     } catch (e: any) {
@@ -70,10 +80,12 @@ export default function BotControlCard({
       await supabase
         .from("bot_settings")
         .upsert(
-          { ref_code: refCode, is_running: false, updated_at: new Date().toISOString() },
+          { ref_code: refCode, enabled: false, updated_at: new Date().toISOString() },
           { onConflict: "ref_code" }
         );
+
       onRunningChange?.(false);
+
       stopBot(refCode).catch((e) => console.warn("stopBot error:", e));
       alert("🛑 봇 중지 완료");
     } catch (e: any) {
@@ -109,15 +121,17 @@ export default function BotControlCard({
       {showStartModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6 space-y-6 shadow-lg">
-            <h2 className="text-lg font-bold text-center">프라봇을 시작합니다</h2>
+            <h2 className="text-lg font-bold text-center">OKX 봇을 시작합니다</h2>
             <div className="text-sm text-gray-800 space-y-2">
               <p>
-                <span className="font-medium">거래심볼:</span> {symbol}
+                <span className="font-medium">인스트루먼트:</span> {instId}
               </p>
               <p>
-                <span className="font-medium">진입금액:</span> {entryAmount}
+                <span className="font-medium">진입 계약 수(entry_qty):</span> {entryQty}
               </p>
-              <p className="text-xs text-gray-500">나의 자산규모에 맞는 진입금액인지 확인해주세요</p>
+              <p className="text-xs text-gray-500">
+                내 자산 규모에 맞는 계약 수인지 확인해주세요.
+              </p>
             </div>
             <div className="flex justify-between gap-4 pt-2">
               <button
@@ -143,10 +157,10 @@ export default function BotControlCard({
       {showStopModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6 space-y-6 shadow-lg">
-            <h2 className="text-lg font-bold text-center">스노봇을 중지합니다</h2>
+            <h2 className="text-lg font-bold text-center">봇을 중지합니다</h2>
             <div className="p-4 rounded-lg border border-gray-300 bg-gray-50">
-              <p className="text-sm font-semibold mb-1">현재 포지션은 유지할게요</p>
-              <p className="text-xs text-gray-500">봇은 중지되지만 현재 모든 포지션은 유지됩니다</p>
+              <p className="text-sm font-semibold mb-1">현재 포지션은 유지합니다</p>
+              <p className="text-xs text-gray-500">봇은 중지되지만 보유 포지션은 그대로 유지됩니다.</p>
             </div>
             <div className="flex justify-between gap-4 pt-2">
               <button

@@ -8,12 +8,12 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 );
 
-// ✅ MC 접두사 최대값 + 1 생성
+// ✅ MK 접두사 최대값 + 1 생성
 async function generateNextReferralCode(): Promise<string> {
   const { data, error } = await supabase
     .from("users")
     .select("ref_code")
-    .ilike("ref_code", "MC%")
+    .ilike("ref_code", "MK%")
     .limit(2000);
 
   if (error) {
@@ -21,16 +21,16 @@ async function generateNextReferralCode(): Promise<string> {
     throw new Error("ref_code 조회 실패");
   }
 
-  let maxNum = 1000; // 시작 MC1000 → 첫 신규는 MC1001
+  let maxNum = 1000; // 시작 MK1000 → 첫 신규는 MK1001
   (data ?? []).forEach((r) => {
-    const m = /^MC(\d+)$/.exec((r.ref_code || "").trim());
+    const m = /^MK(\d+)$/.exec((r.ref_code || "").trim());
     if (m) {
       const n = parseInt(m[1], 10);
       if (!Number.isNaN(n)) maxNum = Math.max(maxNum, n);
     }
   });
 
-  return `MC${maxNum + 1}`;
+  return `MK${maxNum + 1}`;
 }
 
 export async function POST(req: NextRequest) {
@@ -40,10 +40,10 @@ export async function POST(req: NextRequest) {
       wallet_address,
       email = "",
       phone = "01000000000",
-      ref_by = "MC1001",
+      ref_by = "MK1001",
       name = "",
       inviter_name = null, // 선택값
-      coinw_uid = null,    // 선택값
+      okx_uid = null,    // 선택값
     } = body;
 
     if (!wallet_address) {
@@ -82,7 +82,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 🧠 추천인 → 센터 계산
-    let center_id = "MC1001";
+    let center_id = "MK1001";
     if (ref_by) {
       const { data: referrer, error: referrerError } = await supabase
         .from("users")
@@ -93,7 +93,7 @@ export async function POST(req: NextRequest) {
         console.error("❌ 추천인 정보 조회 실패:", referrerError.message);
         return NextResponse.json({ error: "추천인 정보 조회 실패" }, { status: 500 });
       }
-      if (referrer) center_id = referrer.center_id || "MC1001";
+      if (referrer) center_id = referrer.center_id || "MK1001";
     }
 
     // ✅ KST 기준 가입시각 (joined_date는 DB가 자동 계산)
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
       phone,
       name: finalName,
       inviter_name,
-      coinw_uid,
+      okx_uid,
       ref_code,         // NOT NULL + UNIQUE
       ref_by,
       center_id,

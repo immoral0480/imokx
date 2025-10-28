@@ -18,8 +18,8 @@ const CENTER_RATE = 0.2;
  *  필요 없으면 비워도 됩니다.
  */
 const PRICE_BY_PASS: Record<string, number> = {
-  "100 프라": 100,
-  "300 프라": 300,
+  "100 ": 100,
+  "300 ": 300,
   // 필요 시 추가
 };
 

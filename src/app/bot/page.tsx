@@ -11,9 +11,9 @@ import PassCard from "@/components/PassCard";
 import { getKSTDateString } from "@/lib/dateUtil";
 
 // 카드 컴포넌트
-import CoinWApiCard from "@/components/CoinWApiCard";
-import BotSetupCard from "@/components/BotSetupCard";
-import BotControlCard from "@/components/BotControlCard";
+import OkxApiCard from "@/components/CoinWApiCard";          // ✅ 변경: CoinW → OKX
+import BotSetupCard from "@/components/BotSetupCard";       // ✅ 이 컴포넌트는 앞서 inst_id/entry_qty로 수정한 버전
+import BotControlCard from "@/components/BotControlCard";   // ✅ 이 컴포넌트도 instId/entryQty로 수정한 버전
 import BotStatusCard from "@/components/BotStatusCard";
 import BotLogCard from "@/components/BotLogCard";
 
@@ -21,12 +21,13 @@ type BotStatus = "running" | "stopped" | "unknown";
 
 export default function BotPage() {
   // ===== 입력값/설정 =====
-  const [symbol, setSymbol] = useState("XRPUSDT");
-  const [entryAmount, setEntryAmount] = useState("50");
+  const [instId, setInstId] = useState("XRP-USDT-SWAP");  // ✅ 기본 인스트루먼트
+  const [entryQty, setEntryQty] = useState("1");          // ✅ 계약 수(문자열 상태로 보관 → 저장 시 정수 변환)
 
-  // ===== API =====
-  const [coinwApiKey, setcoinwApiKey] = useState("");
-  const [coinwApiSecret, setcoinwApiSecret] = useState("");
+  // ===== API (OKX) =====
+  const [okxApiKey, setOkxApiKey] = useState("");
+  const [okxApiSecret, setOkxApiSecret] = useState("");
+  const [okxApiPassphrase, setOkxApiPassphrase] = useState("");
 
   // ===== 유저/상태 =====
   const account = useActiveAccount();
@@ -82,16 +83,17 @@ export default function BotPage() {
 
       const { data: botRow } = await supabase
         .from("bot_settings")
-        .select("symbol, entry_amount, api_key, secret_key, is_running")
+        .select("inst_id, entry_qty, okx_api_key, okx_api_secret, okx_api_passphrase, enabled")
         .eq("ref_code", userRow.ref_code)
         .maybeSingle();
 
       if (botRow) {
-        setSymbol(botRow.symbol || "XRPUSDT");
-        setEntryAmount(String(botRow.entry_amount ?? "50"));
-        setcoinwApiKey(botRow.api_key ?? "");
-        setcoinwApiSecret(botRow.secret_key ?? "");
-        setBotStatus(botRow.is_running ? "running" : "stopped");
+        setInstId(botRow.inst_id || "XRP-USDT-SWAP");
+        setEntryQty(String(botRow.entry_qty ?? "1"));
+        setOkxApiKey(botRow.okx_api_key ?? "");
+        setOkxApiSecret(botRow.okx_api_secret ?? "");
+        setOkxApiPassphrase(botRow.okx_api_passphrase ?? "");
+        setBotStatus(botRow.enabled ? "running" : "stopped");
       } else {
         setBotStatus("stopped");
       }
@@ -104,12 +106,12 @@ export default function BotPage() {
     checkMembership();
   }, [refCode, checkMembership]);
 
-  // 실시간 구독: is_running
+  // 실시간 구독: enabled (예전 is_running 대체)
   useEffect(() => {
     if (!refCode) return;
 
     const ch = supabase
-      .channel("rt_bot_settings_running")
+      .channel("rt_bot_settings_enabled")
       .on(
         "postgres_changes",
         {
@@ -119,7 +121,7 @@ export default function BotPage() {
           filter: `ref_code=eq.${refCode}`,
         },
         (payload) => {
-          const next = (payload.new as any)?.is_running;
+          const next = (payload.new as any)?.enabled;
           if (typeof next === "boolean") {
             setBotStatus(next ? "running" : "stopped");
           }
@@ -127,7 +129,6 @@ export default function BotPage() {
       )
       .subscribe();
 
-    // cleanup은 동기 함수로 (Promise 반환 금지)
     return () => {
       supabase.removeChannel(ch).catch(() => {});
     };
@@ -169,17 +170,18 @@ export default function BotPage() {
     return () => document.removeEventListener("visibilitychange", onVisible);
   }, [checkMembership]);
 
-  const hasApi = !!coinwApiKey && !!coinwApiSecret;
+  // OKX API 3종이 모두 있어야 true
+  const hasApi = !!okxApiKey && !!okxApiSecret && !!okxApiPassphrase;
 
   return (
     <>
       <main className="min-h-screen bg-[#f5f7fa] pb-24">
         <TopBar title="이모탈봇" />
         <div className="px-4 pt-4 space-y-3">
-          {/* 배너: next/image 사용 */}
+          {/* 배너 */}
           <div className="w-full h-[100px] relative overflow-hidden rounded-xl">
             <Image
-              src="/ad.jpg"
+              src="/ad.png"
               alt="이모탈 배너"
               fill
               sizes="100vw"
@@ -190,35 +192,32 @@ export default function BotPage() {
 
           {refCode && <PassCard refCode={refCode} />}
 
-          {/* API 연동 카드 */}
-          {refCode && 
-            <CoinWApiCard refCode={refCode}/>}
+          {/* API 연동 카드 (OKX) */}
+          {refCode && <OkxApiCard refCode={refCode} />}
 
           {/* 봇 세팅 카드 */}
           {refCode && (
             <BotSetupCard
               refCode={refCode}
               isBotRunning={isBotRunning}
-              symbol={symbol}
-              entryAmount={entryAmount}
-              onSaved={({ symbol: nextSym, entryAmount: nextAmt }) => {
-                setSymbol(nextSym);
-                setEntryAmount(String(nextAmt));
+              instId={instId}
+              entryQty={Number(entryQty)}
+              onSaved={({ instId: nextInst, entryQty: nextQty }) => {
+                setInstId(nextInst);
+                setEntryQty(String(nextQty));
               }}
             />
           )}
 
-          {/* 시작/상태/중지 통합 카드 */}
+          {/* 시작/중지 컨트롤 */}
           {refCode && (
             <BotControlCard
               refCode={refCode}
               isBotRunning={isBotRunning}
-              symbol={symbol}
-              entryAmount={entryAmount}
+              instId={instId}
+              entryQty={entryQty}
               hasApi={hasApi}
-              onRunningChange={(running) =>
-                setBotStatus(running ? "running" : "stopped")
-              }
+              onRunningChange={(running) => setBotStatus(running ? "running" : "stopped")}
             />
           )}
 

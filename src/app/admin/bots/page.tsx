@@ -6,7 +6,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 type PositionRow = {
   ref_code: string;
   exchange: string | null;
-  symbol: string;
+  inst_id: string;                        // ✅ 변경: symbol -> inst_id
   position_side: "LONG" | "SHORT" | string;
   quantity: number | null;
   entry_price: number | null;
@@ -43,11 +43,11 @@ export default function AdminBotsPage() {
 
   // 필터
   const [queryRefCode, setQueryRefCode] = useState("");
-  const [symbols, setSymbols] = useState<string[]>([]);
+  const [instIds, setInstIds] = useState<string[]>([]);  // ✅ 변경: symbols -> instIds
   const [side, setSide] = useState<"ALL" | "LONG" | "SHORT">("ALL");
   const [openOnly, setOpenOnly] = useState(true);
   const [missingOnly, setMissingOnly] = useState(false);
-  const [exchange, setExchange] = useState<string>("coinw");
+  const [exchange, setExchange] = useState<string>("okx"); // ✅ 기본 okx
   const [levMin, setLevMin] = useState<string>("");
   const [levMax, setLevMax] = useState<string>("");
 
@@ -77,8 +77,9 @@ export default function AdminBotsPage() {
   // ---- KPI: 실행 중 봇 수 (bot_settings 기준) ----
   const loadUsersRunning = useCallback(async () => {
     try {
+      // ✅ enabled=true 로 변경
       const res = await sbFetch(
-        `/rest/v1/bot_settings?is_running=eq.true&select=ref_code`,
+        `/rest/v1/bot_settings?enabled=eq.true&select=ref_code`,
         { headers: { Prefer: "count=exact" } }
       );
       const cr = res.headers.get("content-range"); // "0-9/123"
@@ -93,6 +94,8 @@ export default function AdminBotsPage() {
   // ---- 최신 포지션(뷰) 쿼리 빌드 ----
   const buildPositionsQuery = useCallback(() => {
     // 최신 1건만 모아둔 뷰 사용
+    // ⚠️ 백엔드 뷰에 inst_id 컬럼이 있어야 합니다.
+    // (만약 기존에 symbol만 있다면, 뷰에서 inst_id 별칭을 추가해 주세요.)
     const base = "/rest/v1/vw_latest_positions";
     const sp = new URLSearchParams();
 
@@ -101,7 +104,7 @@ export default function AdminBotsPage() {
       [
         "ref_code",
         "exchange",
-        "symbol",
+        "inst_id",            // ✅ symbol → inst_id
         "position_side",
         "quantity",
         "entry_price",
@@ -116,12 +119,12 @@ export default function AdminBotsPage() {
 
     // 가독성 높은 정렬
     sp.append("order", "ref_code.asc");
-    sp.append("order", "symbol.asc");
+    sp.append("order", "inst_id.asc");
 
     // 필터
     if (openOnly) sp.set("quantity", "gt.0");
     if (queryRefCode.trim()) sp.set("ref_code", `ilike.*${queryRefCode.trim()}*`);
-    if (symbols.length) sp.set("symbol", `in.(${symbols.join(",")})`);
+    if (instIds.length) sp.set("inst_id", `in.(${instIds.join(",")})`); // ✅
     if (side !== "ALL") sp.set("position_side", `eq.${side}`);
     if (exchange) sp.set("exchange", `eq.${exchange}`);
     if (levMin) sp.set("leverage", `gte.${levMin}`);
@@ -129,13 +132,11 @@ export default function AdminBotsPage() {
 
     // 결측 경고만 (entry_price OR mark_price 가 null)
     if (missingOnly) {
-      // PostgREST의 or= 구문은 괄호 포함 문자열이여야 하며 URL 인코딩 필요
-      // URLSearchParams가 자동 인코딩하므로 문자열 그대로 넣으면 됩니다.
       sp.set("or", "(entry_price.is.null,mark_price.is.null)");
     }
 
     return `${base}?${sp.toString()}`;
-  }, [openOnly, missingOnly, queryRefCode, symbols, side, exchange, levMin, levMax]);
+  }, [openOnly, missingOnly, queryRefCode, instIds, side, exchange, levMin, levMax]);
 
   // ---- 데이터 로드 ----
   const loadPositions = useCallback(async () => {
@@ -196,22 +197,22 @@ export default function AdminBotsPage() {
     return clsx("border-b last:border-b-0", q === 0 && "opacity-60", warn && "bg-yellow-50");
   };
 
-  // 심볼 입력 보조
-  const [symbolInput, setSymbolInput] = useState("");
-  const addSymbol = () => {
-    const s = symbolInput.trim().toUpperCase();
+  // inst_id 입력 보조
+  const [instIdInput, setInstIdInput] = useState("");
+  const addInstId = () => {
+    const s = instIdInput.trim().toUpperCase();
     if (!s) return;
-    if (!symbols.includes(s)) setSymbols((xs) => [...xs, s]);
-    setSymbolInput("");
+    if (!instIds.includes(s)) setInstIds((xs) => [...xs, s]);
+    setInstIdInput("");
   };
-  const removeSymbol = (s: string) => setSymbols((xs) => xs.filter((x) => x !== s));
+  const removeInstId = (s: string) => setInstIds((xs) => xs.filter((x) => x !== s));
 
   return (
     <section className="space-y-6">
       <header className="flex items-end justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-xl font-semibold">봇 운영현황</h1>
-          <p className="text-sm text-gray-600">유저×심볼 최신 포지션 스냅샷. 자동 새로고침.</p>
+          <p className="text-sm text-gray-600">유저×인스트루먼트 최신 포지션 스냅샷. 자동 새로고침.</p>
         </div>
 
         <div className="flex items-center gap-2 text-sm">
@@ -225,7 +226,10 @@ export default function AdminBotsPage() {
             <option value={300000}>5분</option>
             <option value={0}>끄기(수동)</option>
           </select>
-          <button className="ml-2 rounded px-3 py-1 border hover:bg-gray-50" onClick={() => { loadUsersRunning(); loadPositions(); }}>
+          <button
+            className="ml-2 rounded px-3 py-1 border hover:bg-gray-50"
+            onClick={() => { loadUsersRunning(); loadPositions(); }}
+          >
             지금 새로고침
           </button>
         </div>
@@ -251,23 +255,23 @@ export default function AdminBotsPage() {
             <label className="text-xs text-gray-500">ref_code</label>
             <input
               className="border rounded px-2 py-1"
-              placeholder="MC10..."
+              placeholder="FN10..."
               value={queryRefCode}
               onChange={(e) => setQueryRefCode(e.target.value)}
             />
           </div>
 
           <div className="flex flex-col">
-            <label className="text-xs text-gray-500">symbol 추가</label>
+            <label className="text-xs text-gray-500">inst_id 추가</label>
             <div className="flex gap-2">
               <input
                 className="border rounded px-2 py-1"
-                placeholder="XRPUSDT"
-                value={symbolInput}
-                onChange={(e) => setSymbolInput(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && addSymbol()}
+                placeholder="XRP-USDT-SWAP"
+                value={instIdInput}
+                onChange={(e) => setInstIdInput(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && addInstId()}
               />
-              <button className="border rounded px-3 py-1" onClick={addSymbol}>
+              <button className="border rounded px-3 py-1" onClick={addInstId}>
                 추가
               </button>
             </div>
@@ -284,23 +288,47 @@ export default function AdminBotsPage() {
 
           <div className="flex items-center gap-2">
             <label className="text-xs text-gray-500">exchange</label>
-            <input className="border rounded px-2 py-1 w-28" value={exchange} onChange={(e) => setExchange(e.target.value)} />
+            <input
+              className="border rounded px-2 py-1 w-28"
+              value={exchange}
+              onChange={(e) => setExchange(e.target.value)}
+            />
           </div>
 
           <div className="flex items-center gap-3">
             <label className="text-xs text-gray-500">레버리지</label>
-            <input className="border rounded px-2 py-1 w-20" placeholder="min" value={levMin} onChange={(e) => setLevMin(e.target.value)} />
+            <input
+              className="border rounded px-2 py-1 w-20"
+              placeholder="min"
+              value={levMin}
+              onChange={(e) => setLevMin(e.target.value)}
+            />
             <span className="text-gray-400">~</span>
-            <input className="border rounded px-2 py-1 w-20" placeholder="max" value={levMax} onChange={(e) => setLevMax(e.target.value)} />
+            <input
+              className="border rounded px-2 py-1 w-20"
+              placeholder="max"
+              value={levMax}
+              onChange={(e) => setLevMax(e.target.value)}
+            />
           </div>
 
           <div className="flex items-center gap-4">
             <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" className="size-4" checked={openOnly} onChange={(e) => setOpenOnly(e.target.checked)} />
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={openOnly}
+                onChange={(e) => setOpenOnly(e.target.checked)}
+              />
               오픈만(수량 &gt; 0)
             </label>
             <label className="inline-flex items-center gap-2 text-sm">
-              <input type="checkbox" className="size-4" checked={missingOnly} onChange={(e) => setMissingOnly(e.target.checked)} />
+              <input
+                type="checkbox"
+                className="size-4"
+                checked={missingOnly}
+                onChange={(e) => setMissingOnly(e.target.checked)}
+              />
               결측 경고만
             </label>
           </div>
@@ -310,12 +338,12 @@ export default function AdminBotsPage() {
           </button>
         </div>
 
-        {symbols.length > 0 && (
+        {instIds.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {symbols.map((s) => (
+            {instIds.map((s) => (
               <span key={s} className="inline-flex items-center gap-2 text-xs border rounded-full px-2 py-1">
                 {s}
-                <button onClick={() => removeSymbol(s)} className="text-gray-500 hover:text-black" title="제거">
+                <button onClick={() => removeInstId(s)} className="text-gray-500 hover:text-black" title="제거">
                   ✕
                 </button>
               </span>
@@ -331,7 +359,7 @@ export default function AdminBotsPage() {
             <tr>
               <Th>ref_code</Th>
               <Th>exch</Th>
-              <Th>symbol</Th>
+              <Th>inst_id</Th> {/* ✅ */}
               <Th>side</Th>
               <Th className="text-right">qty</Th>
               <Th className="text-right">entry</Th>
@@ -373,10 +401,10 @@ export default function AdminBotsPage() {
                 const updatedKst =
                   r.kst_minute ?? new Date(r.minute_at).toLocaleString("ko-KR", { timeZone: "Asia/Seoul" });
                 return (
-                  <tr key={`${r.ref_code}-${r.symbol}-${r.position_side}-${i}`} className={rowClass(r)}>
+                  <tr key={`${r.ref_code}-${r.inst_id}-${r.position_side}-${i}`} className={rowClass(r)}>
                     <Td>{r.ref_code}</Td>
                     <Td>{r.exchange ?? "-"}</Td>
-                    <Td>{r.symbol}</Td>
+                    <Td>{r.inst_id}</Td>
                     <Td>
                       <span
                         className={clsx(

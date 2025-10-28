@@ -13,7 +13,7 @@ export default function CoinWApiCard({ refCode }: Props) {
           <KeyRound className="w-5 h-5 text-blue-600" />
         </div>
         <div>
-          <p className="font-semibold text-gray-800">COINW API 연동하기</p>
+          <p className="font-semibold text-gray-800">OKX API 연동하기</p>
           <p className="text-xs text-gray-500">봇 실행을 위해 API 키를 연결하세요</p>
         </div>
       </div>

@@ -10,10 +10,10 @@ export default function PrivacyPage() {
       <section className="prose max-w-none text-sm text-gray-700">
         <h2>개인정보 처리방침</h2>
 
-        <p>프라클 Privacy Policy</p>
-        <p>프라클 개인정보처리방침</p>
+        <p>이모탈 Privacy Policy</p>
+        <p>이모탈 개인정보처리방침</p>
         <p>
-          프라클(이하 &quot;회사&quot;)은 회원의 개인정보를 중요하게 생각하며,
+          이모탈(이하 &quot;회사&quot;)은 회원의 개인정보를 중요하게 생각하며,
           대한민국의 개인정보 보호법 및 관련 규정을 준수하여 다음과 같은
           개인정보처리방침을 수립하여 시행합니다.
         </p>

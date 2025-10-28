@@ -27,10 +27,10 @@ const leadNum = (s?: string) => {
 
 // (선택) 가격→타이틀 매핑 (유지)
 const PASS_TITLE_BY_PRICE: Record<number, string> = {
-  100: "100 프라",
-  300: "300 프라",
-  600: "600 프라",
-  1200: "1200 프라",
+  100: "100 USDT",
+  300: "300 USDT",
+  600: "600 USDT",
+  1200: "1200 USDT",
 };
 
 type CurrentPass = {
@@ -135,7 +135,7 @@ export default function HomePage() {
         const numericKey = parseInt(leadNum(e.pass_type) || "", 10);
         const title =
           (e.pass_type ?? "").toString().trim() ||
-          (isFinite(numericKey) ? PASS_TITLE_BY_PRICE[numericKey] : "프라 멤버십");
+          (isFinite(numericKey) ? PASS_TITLE_BY_PRICE[numericKey] : "이모탈 멤버십");
 
         setHasMembership(true);
         setCurrentPass({ title, expiresAt: e.pass_expired_at });
@@ -192,7 +192,7 @@ export default function HomePage() {
       <TopBar title="스토어" />
 
       <div className="px-3 pt-2">
-        <img src="/ad1.png" alt="광고 배너" className="w-full rounded-xl shadow mb-2" />
+        <img src="/ad.png" alt="광고 배너" className="w-full rounded-xl shadow mb-2" />
       </div>
 
       {/* 안내 메시지 */}
@@ -248,13 +248,13 @@ export default function HomePage() {
 
         {/* PASS 구입 섹션 */}
         <section className="bg-white rounded-xl shadow px-4 py-3">
-          <h3 className="text-sm font-bold text-blue-500 mb-2">프라멤버십 구독하기</h3>
+          <h3 className="text-sm font-bold text-blue-500 mb-2">이모탈멤버십 구독하기</h3>
 
           {[
-            { title: "100 프라", price: "1 USDT / 1개월", image: "/pass-300.png" },
-            { title: "300 프라", price: "2 USDT / 3개월 + 7일", image: "/pass-1800.png" },
-            { title: "600 프라", price: "600 USDT / 6개월 + 1개월", image: "/pass-3600.png" },
-            { title: "1200 프라", price: "1200 USDT / 12개월 + 3개월", image: "/pass-vip.png" },
+            { title: "100 USDT ", price: "1 USDT / 1개월", image: "/pass-300.png" },
+            { title: "300 USDT", price: "300 USDT / 3개월 + 7일", image: "/pass-1800.png" },
+            { title: "600 USDT", price: "600 USDT / 6개월 + 1개월", image: "/pass-3600.png" },
+            { title: "1200 USDT", price: "1200 USDT / 12개월 + 3개월", image: "/pass-vip.png" },
           ].map((pass, idx) => {
             const priceNum = parseFloat(pass.price.replace("USDT", "").split("/")[0].trim());
 

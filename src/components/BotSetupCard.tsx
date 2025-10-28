@@ -8,66 +8,65 @@ import { ChevronRight } from "lucide-react";
 type Props = {
   refCode: string;
   isBotRunning?: boolean;
-  symbol?: string;
-  entryAmount?: string | number;
+  instId?: string;              // ✅ 변경: symbol -> instId
+  entryQty?: number;            // ✅ 변경: entryAmount -> entryQty (정수)
   leverage?: number;
-  onSaved?: (next: { symbol: string; entryAmount: number; leverage: number }) => void;
+  onSaved?: (next: { instId: string; entryQty: number; leverage: number }) => void;
 };
 
 const MIN_LEV = 20;
 const MAX_LEV = 50;
 
-// 심볼별 기본값(수량/TP/SL) — TP/SL은 화면에 안 보이지만 자동 저장에 사용됨
-const DEFAULTS: Record<string, { amount: number; tp: number; sl: number; label: string }> = {
-  BTCUSDT: { amount: 0.001, tp: 800,  sl: 240,  label: "BTC/USDT" },
-  ETHUSDT: { amount: 0.03,  tp: 36,   sl: 12,   label: "ETH/USDT" },
-  SOLUSDT: { amount: 0.5,   tp: 3.2,  sl: 1.2,  label: "SOL/USDT" },
-  XRPUSDT: { amount: 50,    tp: 0.03, sl: 0.012, label: "XRP/USDT" },
-};
-
-// 심볼별 수량 입력 step (UX)
-const AMOUNT_STEP: Record<string, number> = {
-  BTCUSDT: 0.0001,
-  ETHUSDT: 0.001,
-  SOLUSDT: 0.01,
-  XRPUSDT: 1,
+/** OKX SWAP 인스트루먼트 기본값들
+ *  - entryQty: 계약 수(정수). 거래소 lot/minSz는 백엔드에서 보정.
+ *  - tp/sl: 절대가격 차이(OKX 봇의 TP_DIFF/SL_DIFF) — 화면에는 노출하지 않지만 inst 변경 시 자동 저장.
+ */
+const DEFAULTS: Record<
+  string,
+  { entryQty: number; tp: number; sl: number; label: string }
+> = {
+  "BTC-USDT-SWAP": { entryQty: 1, tp: 800,  sl: 240,  label: "BTC-USDT-SWAP" },
+  "ETH-USDT-SWAP": { entryQty: 1, tp: 36,   sl: 12,   label: "ETH-USDT-SWAP" },
+  "SOL-USDT-SWAP": { entryQty: 1, tp: 3.2,  sl: 1.2,  label: "SOL-USDT-SWAP" },
+  "XRP-USDT-SWAP": { entryQty: 1, tp: 0.03, sl: 0.012, label: "XRP-USDT-SWAP" },
 };
 
 export default function BotSetupCard({
   refCode,
   isBotRunning = false,
-  symbol,
-  entryAmount,
+  instId,
+  entryQty,
   leverage,
   onSaved,
 }: Props) {
   const [open, setOpen] = useState(false);
 
-  const [sym, setSym] = useState(symbol ?? "XRPUSDT");
-  const [amount, setAmount] = useState<string>(
-    entryAmount !== undefined ? String(entryAmount) : String(DEFAULTS["XRPUSDT"].amount)
+  const [inst, setInst] = useState(instId ?? "XRP-USDT-SWAP");
+  const [qty, setQty] = useState<string>(
+    entryQty !== undefined ? String(entryQty) : String(DEFAULTS["XRP-USDT-SWAP"].entryQty)
   );
   const [lev, setLev] = useState<number>(leverage ?? 20);
   const [loading, setLoading] = useState(false);
-  const [savingSymbol, setSavingSymbol] = useState(false); // 심볼 변경 자동 저장 표시
+  const [savingInst, setSavingInst] = useState(false); // 인스트 변경 자동 저장 표시
 
   // 서버에서 기존 설정 로드(부모 프롭이 없을 때)
   useEffect(() => {
     if (!refCode) return;
-    if (symbol !== undefined || entryAmount !== undefined || leverage !== undefined) return;
+    if (instId !== undefined || entryQty !== undefined || leverage !== undefined) return;
 
     (async () => {
+      // 조회는 민감정보 없는 view를 쓰는 걸 권장 (bot_settings_public)
       const { data, error } = await supabase
-        .from("bot_settings")
-        .select("symbol, entry_amount, leverage")
+        .from("bot_settings") // 필요 시 "bot_settings_public"로 교체
+        .select("inst_id, entry_qty, leverage")
         .eq("ref_code", refCode)
         .maybeSingle();
 
       if (!error && data) {
-        const s = (data.symbol as string) ?? "XRPUSDT";
-        setSym(s);
-        const d = DEFAULTS[s] ?? DEFAULTS["XRPUSDT"];
-        setAmount(String(data.entry_amount ?? d.amount));
+        const i = (data.inst_id as string) ?? "XRP-USDT-SWAP";
+        setInst(i);
+        const d = DEFAULTS[i] ?? DEFAULTS["XRP-USDT-SWAP"];
+        setQty(String(data.entry_qty ?? d.entryQty));
         setLev(
           Number.isFinite(data.leverage) && data.leverage >= MIN_LEV && data.leverage <= MAX_LEV
             ? Number(data.leverage)
@@ -75,35 +74,35 @@ export default function BotSetupCard({
         );
       }
     })();
-  }, [refCode, symbol, entryAmount, leverage]);
+  }, [refCode, instId, entryQty, leverage]);
 
-  // 심볼 변경 → 기본 수량 채우고, TP/SL은 즉시 Supabase 자동 저장(화면엔 표시 안 함)
-  async function handleSymbolChange(next: string) {
-    setSym(next);
-    const d = DEFAULTS[next] ?? DEFAULTS["XRPUSDT"];
-    setAmount(String(d.amount));
+  // 인스트루먼트 변경 → 기본 수량 채우고, TP/SL 즉시 자동 저장(화면엔 표시 안 함)
+  async function handleInstChange(next: string) {
+    setInst(next);
+    const d = DEFAULTS[next] ?? DEFAULTS["XRP-USDT-SWAP"];
+    setQty(String(d.entryQty));
 
     if (!refCode) return;
     try {
-      setSavingSymbol(true);
+      setSavingInst(true);
       const { error } = await supabase
         .from("bot_settings")
         .upsert(
           {
             ref_code: refCode,
-            symbol: next,
-            tp_diff: d.tp,         // 자동 저장
-            sl_diff: d.sl,         // 자동 저장
+            inst_id: next,
+            tp_diff: d.tp,            // ✅ 자동 저장 (OKX 봇 TP_DIFF)
+            sl_diff: d.sl,            // ✅ 자동 저장 (OKX 봇 SL_DIFF)
             updated_at: new Date().toISOString(),
           },
           { onConflict: "ref_code" }
         );
       if (error) throw error;
     } catch (e) {
-      console.error("심볼 변경 자동 저장 실패:", e);
-      alert("❌ 심볼 변경 자동 저장 실패");
+      console.error("인스트 변경 자동 저장 실패:", e);
+      alert("❌ 인스트 변경 자동 저장 실패");
     } finally {
-      setSavingSymbol(false);
+      setSavingInst(false);
     }
   }
 
@@ -113,21 +112,21 @@ export default function BotSetupCard({
   }
 
   const levInvalid = lev < MIN_LEV || lev > MAX_LEV || !Number.isInteger(lev);
-  const amountInvalid = isNaN(Number(amount)) || Number(amount) <= 0;
+  const qtyInvalid = isNaN(Number(qty)) || Number(qty) <= 0 || !Number.isInteger(Number(qty));
 
   const summary = useMemo(
     () =>
-      `${DEFAULTS[sym]?.label ?? sym} / 수량 ${amount} / 레버리지 x${lev}` +
-      (savingSymbol ? " (심볼 저장 중...)" : ""),
-    [sym, amount, lev, savingSymbol]
+      `${DEFAULTS[inst]?.label ?? inst} / 계약수 ${qty} / 레버리지 x${lev}` +
+      (savingInst ? " (인스트 저장 중...)" : ""),
+    [inst, qty, lev, savingInst]
   );
 
-  // 저장: 수량 + 레버리지만
+  // 저장: entry_qty + leverage (inst는 선택 즉시 저장되므로 재기입만)
   async function handleSave() {
     if (!refCode) return;
 
-    if (amountInvalid) {
-      alert("❗ 유효한 수량을 입력하세요.");
+    if (qtyInvalid) {
+      alert("❗ 계약 수는 1 이상의 정수로 입력하세요.");
       return;
     }
     if (levInvalid) {
@@ -135,7 +134,7 @@ export default function BotSetupCard({
       return;
     }
 
-    const nAmount = Number(amount);
+    const nQty = Math.trunc(Number(qty));
 
     setLoading(true);
     const { error } = await supabase
@@ -143,8 +142,8 @@ export default function BotSetupCard({
       .upsert(
         {
           ref_code: refCode,
-          symbol: sym,               // 재기입(안전)
-          entry_amount: nAmount,
+          inst_id: inst,            // 재기입(안전)
+          entry_qty: nQty,          // ✅ 테이블 스키마 반영
           leverage: Math.trunc(lev),
           updated_at: new Date().toISOString(),
         },
@@ -158,7 +157,7 @@ export default function BotSetupCard({
       return;
     }
 
-    onSaved?.({ symbol: sym, entryAmount: nAmount, leverage: Math.trunc(lev) });
+    onSaved?.({ instId: inst, entryQty: nQty, leverage: Math.trunc(lev) });
     alert("✅ 세팅 저장 완료");
     setOpen(false);
   }
@@ -186,38 +185,38 @@ export default function BotSetupCard({
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6 space-y-4 shadow-lg">
             <h2 className="text-lg font-bold">봇 세팅</h2>
 
-            {/* 거래 심볼 */}
+            {/* 인스트루먼트 */}
             <div>
-              <label className="block text-sm font-medium mb-1">거래 심볼</label>
+              <label className="block text-sm font-medium mb-1">거래 인스트루먼트</label>
               <select
-                value={sym}
-                onChange={(e) => handleSymbolChange(e.target.value)}
+                value={inst}
+                onChange={(e) => handleInstChange(e.target.value)}
                 className="w-full border rounded px-3 py-2 text-sm"
-                disabled={savingSymbol}
+                disabled={savingInst}
               >
-                <option value="BTCUSDT">BTC/USDT</option>
-                <option value="ETHUSDT">ETH/USDT</option>
-                <option value="SOLUSDT">SOL/USDT</option>
-                <option value="XRPUSDT">XRP/USDT</option>
+                <option value="BTC-USDT-SWAP">BTC-USDT-SWAP</option>
+                <option value="ETH-USDT-SWAP">ETH-USDT-SWAP</option>
+                <option value="SOL-USDT-SWAP">SOL-USDT-SWAP</option>
+                <option value="XRP-USDT-SWAP">XRP-USDT-SWAP</option>
               </select>
               <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-                심볼 변경 시 해당 심볼의 TP/SL이 <b>자동 저장</b>됩니다. (화면에는 표시하지 않음)
+                인스트 변경 시 해당 기본 TP/SL이 <b>자동 저장</b>됩니다. (화면에는 표시하지 않음)
               </p>
             </div>
 
-            {/* 수량 */}
+            {/* 계약 수(entry_qty) */}
             <div>
-              <label className="block text-sm font-medium mb-1">진입 금액(코인 수량)</label>
+              <label className="block text-sm font-medium mb-1">진입 계약 수 (entry_qty)</label>
               <input
                 type="number"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                min="0"
-                step={AMOUNT_STEP[sym] ?? 0.0001}
+                value={qty}
+                onChange={(e) => setQty(e.target.value)}
+                min={1}
+                step={1}
                 className="w-full border rounded px-3 py-2 text-sm"
               />
-              {amountInvalid && (
-                <p className="text-[11px] text-red-500 mt-1">0보다 큰 수를 입력하세요.</p>
+              {qtyInvalid && (
+                <p className="text-[11px] text-red-500 mt-1">1 이상의 정수를 입력하세요.</p>
               )}
             </div>
 
@@ -249,7 +248,7 @@ export default function BotSetupCard({
               </button>
               <button
                 onClick={handleSave}
-                disabled={loading || levInvalid || amountInvalid || savingSymbol}
+                disabled={loading || levInvalid || qtyInvalid || savingInst}
                 className="px-4 py-2 bg-blue-600 text-white rounded disabled:opacity-60"
               >
                 {loading ? "저장 중..." : "저장"}

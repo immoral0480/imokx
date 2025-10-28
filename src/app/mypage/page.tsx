@@ -13,7 +13,7 @@ export default function MyPage() {
   const router = useRouter();
 
   const [userData, setUserData] = useState<any>(null);
-  const [editingField, setEditingField] = useState<"name" | "phone" | "coinw_uid" | null>(null);
+  const [editingField, setEditingField] = useState<"name" | "phone" | "okx_uid" | null>(null);
   const [nameInput, setNameInput] = useState("");
   const [phoneInput, setPhoneInput] = useState("");
   const [uidInput, setUidInput] = useState("");
@@ -24,7 +24,7 @@ export default function MyPage() {
 
       const { data: user } = await supabase
         .from("users")
-        .select("name, phone, email, created_at, ref_by, joined_at, coinw_uid")
+        .select("name, phone, email, created_at, ref_by, joined_at, okx_uid")
         .eq("wallet_address", account.address.toLowerCase())
         .maybeSingle();
 
@@ -45,7 +45,7 @@ export default function MyPage() {
         ref_by_name: refName,
       });
 
-      setUidInput(user?.coinw_uid || "");
+      setUidInput(user?.okx_uid || "");
     };
 
     fetchUserData();
@@ -153,21 +153,21 @@ export default function MyPage() {
               {/* ✅ CoinW UID 추가 */}
               <InfoItem
                 label="CoinW UID"
-                value={userData?.coinw_uid}
-                isEditing={editingField === "coinw_uid"}
+                value={userData?.okx_uid}
+                isEditing={editingField === "okx_uid"}
                 onEdit={() => {
-                  setEditingField("coinw_uid");
-                  setUidInput(userData?.coinw_uid || "");
+                  setEditingField("okx_uid");
+                  setUidInput(userData?.okx_uid || "");
                 }}
                 onSave={async () => {
                   const { error } = await supabase
                     .from("users")
-                    .update({ coinw_uid: uidInput })
+                    .update({ okx_uid: uidInput })
                     .eq("wallet_address", account.address.toLowerCase());
 
                   if (!error) {
                     setEditingField(null);
-                    setUserData({ ...userData, coinw_uid: uidInput });
+                    setUserData({ ...userData, okx_uid: uidInput });
                   }
                 }}
                 inputValue={uidInput}
@@ -188,22 +188,6 @@ export default function MyPage() {
                 <img src="/icon-go.png" alt="이동" className="w-4 h-4" />
               </button>
             </div>
-          </section>
-
-          {/* 문의 */}
-          <section className="space-y-4 mb-2">
-            <a
-              href="http://pf.kakao.com/_rxaxmGn/chat"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block bg-white p-4 rounded-xl shadow flex justify-between items-center hover:bg-gray-50"
-            >
-              <div className="flex items-center space-x-2">
-                <img src="/icon-question.png" alt="문의" className="w-5 h-5" />
-                <span className="text-sm">1:1 문의하기</span>
-              </div>
-              <img src="/icon-link.png" alt="이동" className="w-4 h-4" />
-            </a>
           </section>
 
           {/* 로그아웃 */}

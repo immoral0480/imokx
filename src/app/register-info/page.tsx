@@ -12,25 +12,23 @@ export default function RegisterInfoPage() {
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [coinwUid, setCoinwUid] = useState("");
+  const [phone, setPhone] = useState(""); // 숫자만 보관
+  const [okxUid, setOkxUid] = useState(""); // ✅ OKX UID로 변경
+  const [saving, setSaving] = useState(false);
 
   const handleSubmit = async () => {
     if (!account?.address) {
       alert("지갑이 연결되지 않았습니다.");
       return;
     }
-
     if (!name.trim()) {
       alert("이름을 입력해주세요.");
       return;
     }
-
     if (!email.trim().includes("@")) {
       alert("올바른 이메일을 입력해주세요.");
       return;
     }
-
     if (phone.length < 9) {
       alert("휴대폰 번호를 정확히 입력해주세요.");
       return;
@@ -38,15 +36,18 @@ export default function RegisterInfoPage() {
 
     const fullPhone = `+82${phone}`;
 
+    setSaving(true);
     const { error } = await supabase
       .from("users")
       .update({
         name: name.trim(),
         email: email.trim(),
         phone: fullPhone,
-        coinw_uid: coinwUid.trim(), // ✅ 추가 저장
+        okx_uid: okxUid.trim(), // ✅ 컬럼명 변경
       })
       .eq("wallet_address", account.address.toLowerCase());
+
+    setSaving(false);
 
     if (error) {
       alert("저장 실패: " + error.message);
@@ -105,26 +106,26 @@ export default function RegisterInfoPage() {
           />
         </div>
 
-        {/* ✅ COINW UID 입력 */}
+        {/* ✅ OKX UID 입력 */}
         <input
           type="text"
-          placeholder="COINW UID를 입력하세요."
-          value={coinwUid}
-          onChange={(e) => setCoinwUid(e.target.value)}
+          placeholder="OKX UID를 입력하세요."
+          value={okxUid}
+          onChange={(e) => setOkxUid(e.target.value)}
           className="w-full px-4 py-3 border border-gray-300 rounded-lg bg-white text-sm placeholder-gray-400"
         />
 
         {/* 저장 버튼 */}
         <button
           onClick={handleSubmit}
-          disabled={!name || !email || phone.length < 9}
+          disabled={saving || !name || !email || phone.length < 9}
           className={`w-full py-3 rounded-lg text-sm font-semibold transition ${
-            !name || !email || phone.length < 9
+            saving || !name || !email || phone.length < 9
               ? "bg-gray-300 text-gray-500 cursor-not-allowed"
               : "bg-blue-600 text-white hover:bg-blue-700"
           }`}
         >
-          저장하기
+          {saving ? "저장 중..." : "저장하기"}
         </button>
       </div>
     </main>

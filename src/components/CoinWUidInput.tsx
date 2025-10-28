@@ -17,13 +17,13 @@ export default function CoinWUidInput({ walletAddress }: Props) {
     (async () => {
       const { data: user } = await supabase
         .from("users")
-        .select("COINW_uid")
+        .select("okx_uid")
         .eq("wallet_address", walletAddress.toLowerCase())
         .maybeSingle();
 
       if (user) {
-        setUid(user.COINW_uid || "");
-        if (user.COINW_uid) setSaved(true);
+        setUid(user.okx_uid || "");
+        if (user.okx_uid) setSaved(true);
       }
     })();
   }, [walletAddress]);
@@ -32,7 +32,7 @@ export default function CoinWUidInput({ walletAddress }: Props) {
     if (!uid || !walletAddress) return;
     await supabase
       .from("users")
-      .update({ COINW_uid: uid })
+      .update({ okx_uid: uid })
       .eq("wallet_address", walletAddress.toLowerCase());
     setSaved(true);
   };
@@ -65,7 +65,7 @@ export default function CoinWUidInput({ walletAddress }: Props) {
         </section>
       ) : (
         <div className="bg-white rounded-xl shadow px-4 pt-4 pb-4 flex justify-between items-center">
-          <span className="text-sm font-semibold text-gray-700">COINW UID : {uid}</span>
+          <span className="text-sm font-semibold text-gray-700">okx UID : {uid}</span>
           <div className="bg-blue-500 text-white text-xs rounded-full px-2 py-1">저장 완료</div>
         </div>
       )}

@@ -14,7 +14,7 @@ export default function BottomNav() {
         <div className="flex justify-around items-center h-14 text-xs text-gray-500">
           <Link href="/bot" className="flex flex-col items-center">
             <Home size={20} className={isActive("/bot") ? "text-blue-600" : "text-gray-400"} />
-            <span className={isActive("/bot") ? "text-blue-600" : "text-gray-400"}>프라봇</span>
+            <span className={isActive("/bot") ? "text-blue-600" : "text-gray-400"}>이모탈봇</span>
           </Link>
 
           <Link href="/store" className="flex flex-col items-center">

@@ -107,7 +107,7 @@ export default function InviteDetailClient() {
     membership?.product_name ??
     membership?.plan_name ??
     membership?.pass_type ??      // 🔹 스키마의 pass_type 사용
-    "100 프라 멤버십";
+    "100  멤버십";
 
   const purchaseAtRaw = pickPurchaseAt(membership);
   const expireAtRaw =
@@ -131,7 +131,7 @@ export default function InviteDetailClient() {
       <div className="max-w-md mx-auto px-4 pt-2">
         {/* 멤버십 가입 현황 */}
         <h2 className="font-semibold text-sm text-gray-700 mb-2 pl-2">
-          {name ? `${name} 님의 프라 멤버십 현황` : "프라 멤버십 현황"}
+          {name ? `${name} 님의  멤버십 현황` : " 멤버십 현황"}
         </h2>
 
         <div className="bg-white rounded-xl shadow p-4 flex flex-col space-y-2">
@@ -145,7 +145,7 @@ export default function InviteDetailClient() {
             </div>
           ) : (
             <div className="text-center text-sm text-gray-500 py-8">
-              구독중인 프라멤버십이 없어요
+              구독중인 멤버십이 없어요
             </div>
           )}
         </div>
