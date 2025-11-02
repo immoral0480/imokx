@@ -4,14 +4,13 @@
 import { useMemo, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
 import { startBot, stopBot } from "@/lib/botApi";
-import { PauseCircle, PlayCircle } from "lucide-react";
 
 type Props = {
   refCode: string;
   isBotRunning: boolean;
-  instId: string;                 // ✅ 변경: symbol -> instId (예: "XRP-USDT-SWAP")
-  coinQty: string | number;      // ✅ 변경: entryAmount -> coinQty (계약 수, 정수)
-  hasApi: boolean;                // OKX api key/secret/passphrase 저장 여부
+  instId: string;                 // 예: "XRP-USDT-SWAP"
+  coinQty: string | number;       // 소수 허용
+  hasApi: boolean;
   onRunningChange?: (running: boolean) => void;
 };
 
@@ -28,10 +27,8 @@ export default function BotControlCard({
   const [busy, setBusy] = useState(false);
 
   const qtyNum = useMemo(() => Number(coinQty), [coinQty]);
-  const qtyValid = Number.isInteger(qtyNum) && qtyNum > 0;
-
-  const statusLabel = isBotRunning ? "실행 중" : "중지됨";
-  const statusPill = isBotRunning ? "RUNNING" : "STOPPED";
+  // ✅ 소수 허용 + 최소 0.001
+  const qtyValid = !Number.isNaN(qtyNum) && qtyNum >= 0.001;
 
   async function doStart() {
     if (!refCode) return;
@@ -44,13 +41,13 @@ export default function BotControlCard({
       return;
     }
     if (!qtyValid) {
-      alert("❗ 진입 계약 수(coin_qty)는 1 이상의 정수여야 합니다.");
+      // ✅ 문구도 수정
+      alert("❗ 진입 계약 수(coin_qty)는 0.001 이상이어야 합니다.");
       return;
     }
 
     setBusy(true);
     try {
-      // ✅ 실행 플래그: is_running → enabled
       await supabase
         .from("bot_settings")
         .upsert(
@@ -60,7 +57,6 @@ export default function BotControlCard({
 
       onRunningChange?.(true);
 
-      // 파이썬 매니저에 실제 시작 신호(있으면)
       startBot(refCode).catch((e) => console.warn("startBot error:", e));
       alert("🚀 봇 실행 시작됨");
     } catch (e: any) {
@@ -74,7 +70,6 @@ export default function BotControlCard({
 
   async function doStop() {
     if (!refCode) return;
-
     setBusy(true);
     try {
       await supabase
@@ -123,15 +118,9 @@ export default function BotControlCard({
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6 space-y-6 shadow-lg">
             <h2 className="text-lg font-bold text-center">OKX 봇을 시작합니다</h2>
             <div className="text-sm text-gray-800 space-y-2">
-              <p>
-                <span className="font-medium">인스트루먼트:</span> {instId}
-              </p>
-              <p>
-                <span className="font-medium">진입 계약 수(coin_qty):</span> {coinQty}
-              </p>
-              <p className="text-xs text-gray-500">
-                내 자산 규모에 맞는 계약 수인지 확인해주세요.
-              </p>
+              <p><span className="font-medium">인스트루먼트:</span> {instId}</p>
+              <p><span className="font-medium">진입 계약 수(coin_qty):</span> {coinQty}</p>
+              <p className="text-xs text-gray-500">내 자산 규모에 맞는 계약 수인지 확인해주세요.</p>
             </div>
             <div className="flex justify-between gap-4 pt-2">
               <button
