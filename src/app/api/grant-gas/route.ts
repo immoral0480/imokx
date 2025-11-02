@@ -66,7 +66,7 @@ export async function POST(req: Request) {
     try {
       const { data, error } = await adminSupabase
         .from("users")
-        .select("gas_granted")
+        .select("gas_grant")
         .eq("wallet_address", walletAddress.toLowerCase())
         .maybeSingle();
 
@@ -76,7 +76,7 @@ export async function POST(req: Request) {
       return json({ ok: false, stage: "select_user", error: "user load failed", detail: describeError(e) }, 500);
     }
 
-    if (userRow?.gas_granted === true) {
+    if (userRow?.gas_grant === true) {
       return json({ ok: true, skipped: true });
     }
 
@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     try {
       const { error: upErr } = await adminSupabase
         .from("users")
-        .update({ gas_granted: true })
+        .update({ gas_grant: true })
         .eq("wallet_address", walletAddress.toLowerCase());
 
       if (upErr) throw upErr;

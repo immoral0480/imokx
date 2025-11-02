@@ -25,7 +25,7 @@ function OkxConnectInner() {
 
   // 기본 저장 옵션 (OKX 스키마)
   const [instId, setInstId] = useState("XRP-USDT-SWAP");
-  const [entryQty, setEntryQty] = useState(1);      // 계약 수(정수)
+  const [coinQty, setcoinQty] = useState(1);      // 계약 수(정수)
   const [usePaper, setUsePaper] = useState(true);   // 모의거래 기본 ON
 
   const [loading, setLoading] = useState(false);
@@ -45,7 +45,7 @@ function OkxConnectInner() {
   }, [refCode]);
 
   const disabled =
-    loading || !refCode || !apiKey || !secretKey || !passphrase || !Number.isInteger(entryQty) || entryQty <= 0;
+    loading || !refCode || !apiKey || !secretKey || !passphrase || !Number.isInteger(coinQty) || coinQty <= 0;
 
   async function handleSave(e?: React.FormEvent) {
     e?.preventDefault();
@@ -58,8 +58,8 @@ function OkxConnectInner() {
       alert("OKX API Key / Secret / Passphrase를 모두 입력하세요.");
       return;
     }
-    if (!Number.isInteger(entryQty) || entryQty <= 0) {
-      alert("진입 계약 수(entry_qty)는 1 이상의 정수여야 합니다.");
+    if (!Number.isInteger(coinQty) || coinQty <= 0) {
+      alert("진입 계약 수(coin_qty)는 1 이상의 정수여야 합니다.");
       return;
     }
     if (walletAddress && !/^0x[a-fA-F0-9]{40}$/.test(walletAddress)) {
@@ -73,7 +73,7 @@ function OkxConnectInner() {
       const payload = {
         ref_code: refCode,
         inst_id: instId,
-        entry_qty: entryQty,
+        coin_qty: coinQty,
         use_paper: usePaper,
         okx_api_key: apiKey.trim(),
         okx_api_secret: secretKey.trim(),
@@ -192,13 +192,13 @@ function OkxConnectInner() {
             </div>
 
             <div>
-              <label className="block text-xs text-gray-600 mb-1">진입 계약 수 (entry_qty)</label>
+              <label className="block text-xs text-gray-600 mb-1">진입 계약 수 (coin_qty)</label>
               <input
                 type="number"
                 min={1}
                 step={1}
-                value={entryQty}
-                onChange={(e) => setEntryQty(Number(e.target.value || 1))}
+                value={coinQty}
+                onChange={(e) => setcoinQty(Number(e.target.value || 1))}
                 className="w-full border rounded-lg px-3 py-2 text-sm"
               />
             </div>

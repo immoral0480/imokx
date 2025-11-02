@@ -8,57 +8,50 @@ import { ChevronRight } from "lucide-react";
 type Props = {
   refCode: string;
   isBotRunning?: boolean;
-  instId?: string;              // ✅ 변경: symbol -> instId
-  entryQty?: number;            // ✅ 변경: entryAmount -> entryQty (정수)
+  instId?: string;
+  coinQty?: number;
   leverage?: number;
-  onSaved?: (next: { instId: string; entryQty: number; leverage: number }) => void;
+  onSaved?: (next: { instId: string; coinQty: number; leverage: number }) => void;
 };
 
 const MIN_LEV = 20;
 const MAX_LEV = 50;
 
-/** OKX SWAP 인스트루먼트 기본값들
- *  - entryQty: 계약 수(정수). 거래소 lot/minSz는 백엔드에서 보정.
- *  - tp/sl: 절대가격 차이(OKX 봇의 TP_DIFF/SL_DIFF) — 화면에는 노출하지 않지만 inst 변경 시 자동 저장.
- */
 const DEFAULTS: Record<
   string,
-  { entryQty: number; tp: number; sl: number; label: string }
+  { coinQty: number; tp: number; sl: number; label: string }
 > = {
-  "BTC-USDT-SWAP": { entryQty: 1, tp: 800,  sl: 240,  label: "BTC-USDT-SWAP" },
-  "ETH-USDT-SWAP": { entryQty: 1, tp: 36,   sl: 12,   label: "ETH-USDT-SWAP" },
-  "SOL-USDT-SWAP": { entryQty: 1, tp: 3.2,  sl: 1.2,  label: "SOL-USDT-SWAP" },
-  "XRP-USDT-SWAP": { entryQty: 1, tp: 0.03, sl: 0.012, label: "XRP-USDT-SWAP" },
+  "BTC-USDT-SWAP": { coinQty: 0.001, tp: 800, sl: 240, label: "BTC-USDT-SWAP" },
+  "ETH-USDT-SWAP": { coinQty: 0.01, tp: 36, sl: 12, label: "ETH-USDT-SWAP" },
+  "SOL-USDT-SWAP": { coinQty: 1, tp: 3.2, sl: 1.2, label: "SOL-USDT-SWAP" },
+  "XRP-USDT-SWAP": { coinQty: 50, tp: 0.03, sl: 0.012, label: "XRP-USDT-SWAP" },
 };
 
 export default function BotSetupCard({
   refCode,
   isBotRunning = false,
   instId,
-  entryQty,
+  coinQty,
   leverage,
   onSaved,
 }: Props) {
   const [open, setOpen] = useState(false);
-
   const [inst, setInst] = useState(instId ?? "XRP-USDT-SWAP");
   const [qty, setQty] = useState<string>(
-    entryQty !== undefined ? String(entryQty) : String(DEFAULTS["XRP-USDT-SWAP"].entryQty)
+    coinQty !== undefined ? String(coinQty) : String(DEFAULTS["XRP-USDT-SWAP"].coinQty)
   );
   const [lev, setLev] = useState<number>(leverage ?? 20);
   const [loading, setLoading] = useState(false);
-  const [savingInst, setSavingInst] = useState(false); // 인스트 변경 자동 저장 표시
+  const [savingInst, setSavingInst] = useState(false);
 
-  // 서버에서 기존 설정 로드(부모 프롭이 없을 때)
   useEffect(() => {
     if (!refCode) return;
-    if (instId !== undefined || entryQty !== undefined || leverage !== undefined) return;
+    if (instId !== undefined || coinQty !== undefined || leverage !== undefined) return;
 
     (async () => {
-      // 조회는 민감정보 없는 view를 쓰는 걸 권장 (bot_settings_public)
       const { data, error } = await supabase
-        .from("bot_settings") // 필요 시 "bot_settings_public"로 교체
-        .select("inst_id, entry_qty, leverage")
+        .from("bot_settings")
+        .select("inst_id, coin_qty, coin_qty, leverage, pos_mode")
         .eq("ref_code", refCode)
         .maybeSingle();
 
@@ -66,7 +59,13 @@ export default function BotSetupCard({
         const i = (data.inst_id as string) ?? "XRP-USDT-SWAP";
         setInst(i);
         const d = DEFAULTS[i] ?? DEFAULTS["XRP-USDT-SWAP"];
-        setQty(String(data.entry_qty ?? d.entryQty));
+        const initQty =
+          (typeof data.coin_qty === "number" && data.coin_qty > 0
+            ? data.coin_qty
+            : typeof data.coin_qty === "number" && data.coin_qty > 0
+            ? data.coin_qty
+            : d.coinQty);
+        setQty(String(initQty));
         setLev(
           Number.isFinite(data.leverage) && data.leverage >= MIN_LEV && data.leverage <= MAX_LEV
             ? Number(data.leverage)
@@ -74,13 +73,12 @@ export default function BotSetupCard({
         );
       }
     })();
-  }, [refCode, instId, entryQty, leverage]);
+  }, [refCode, instId, coinQty, leverage]);
 
-  // 인스트루먼트 변경 → 기본 수량 채우고, TP/SL 즉시 자동 저장(화면엔 표시 안 함)
   async function handleInstChange(next: string) {
     setInst(next);
     const d = DEFAULTS[next] ?? DEFAULTS["XRP-USDT-SWAP"];
-    setQty(String(d.entryQty));
+    setQty(String(d.coinQty));
 
     if (!refCode) return;
     try {
@@ -91,8 +89,9 @@ export default function BotSetupCard({
           {
             ref_code: refCode,
             inst_id: next,
-            tp_diff: d.tp,            // ✅ 자동 저장 (OKX 봇 TP_DIFF)
-            sl_diff: d.sl,            // ✅ 자동 저장 (OKX 봇 SL_DIFF)
+            tp_diff: d.tp,
+            sl_diff: d.sl,
+            pos_mode: "long_short", // ✅ 자동 저장 추가
             updated_at: new Date().toISOString(),
           },
           { onConflict: "ref_code" }
@@ -111,22 +110,21 @@ export default function BotSetupCard({
     if (!isNaN(v)) setLev(v);
   }
 
+  const qtyNum = Number(qty);
+  const qtyInvalid = isNaN(qtyNum) || qtyNum <= 0;
   const levInvalid = lev < MIN_LEV || lev > MAX_LEV || !Number.isInteger(lev);
-  const qtyInvalid = isNaN(Number(qty)) || Number(qty) <= 0 || !Number.isInteger(Number(qty));
 
   const summary = useMemo(
     () =>
-      `${DEFAULTS[inst]?.label ?? inst} / 계약수 ${qty} / 레버리지 x${lev}` +
+      `${DEFAULTS[inst]?.label ?? inst} / 코인수량 ${qty} / 레버리지 x${lev}` +
       (savingInst ? " (인스트 저장 중...)" : ""),
     [inst, qty, lev, savingInst]
   );
 
-  // 저장: entry_qty + leverage (inst는 선택 즉시 저장되므로 재기입만)
   async function handleSave() {
     if (!refCode) return;
-
     if (qtyInvalid) {
-      alert("❗ 계약 수는 1 이상의 정수로 입력하세요.");
+      alert("❗ 코인 수량은 0보다 큰 숫자로 입력하세요.");
       return;
     }
     if (levInvalid) {
@@ -134,7 +132,7 @@ export default function BotSetupCard({
       return;
     }
 
-    const nQty = Math.trunc(Number(qty));
+    const nQty = Number(qty);
 
     setLoading(true);
     const { error } = await supabase
@@ -142,9 +140,10 @@ export default function BotSetupCard({
       .upsert(
         {
           ref_code: refCode,
-          inst_id: inst,            // 재기입(안전)
-          entry_qty: nQty,          // ✅ 테이블 스키마 반영
+          inst_id: inst,
+          coin_qty: nQty,
           leverage: Math.trunc(lev),
+          pos_mode: "long_short", // ✅ 저장 시 항상 자동 입력
           updated_at: new Date().toISOString(),
         },
         { onConflict: "ref_code" }
@@ -157,7 +156,7 @@ export default function BotSetupCard({
       return;
     }
 
-    onSaved?.({ instId: inst, entryQty: nQty, leverage: Math.trunc(lev) });
+    onSaved?.({ instId: inst, coinQty: nQty, leverage: Math.trunc(lev) });
     alert("✅ 세팅 저장 완료");
     setOpen(false);
   }
@@ -166,7 +165,6 @@ export default function BotSetupCard({
 
   return (
     <>
-      {/* 카드 */}
       <div
         onClick={() => !cardDisabled && setOpen(true)}
         className={`bg-white border rounded-xl px-4 py-3 flex items-center justify-between
@@ -179,7 +177,6 @@ export default function BotSetupCard({
         <ChevronRight className="text-gray-400" />
       </div>
 
-      {/* 모달 */}
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
           <div className="bg-white rounded-xl w-[90%] max-w-md p-6 space-y-4 shadow-lg">
@@ -200,24 +197,23 @@ export default function BotSetupCard({
                 <option value="XRP-USDT-SWAP">XRP-USDT-SWAP</option>
               </select>
               <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-                인스트 변경 시 해당 기본 TP/SL이 <b>자동 저장</b>됩니다. (화면에는 표시하지 않음)
+                인스트 변경 시 기본 TP/SL 및 포지션모드가 <b>자동 저장</b>됩니다.
               </p>
             </div>
 
-            {/* 계약 수(entry_qty) */}
+            {/* 코인 수량 */}
             <div>
-              <label className="block text-sm font-medium mb-1">진입 계약 수 (entry_qty)</label>
+              <label className="block text-sm font-medium mb-1">진입 코인 수량</label>
               <input
                 type="number"
                 value={qty}
                 onChange={(e) => setQty(e.target.value)}
-                min={1}
-                step={1}
+                min={0}
+                step="any"
                 className="w-full border rounded px-3 py-2 text-sm"
               />
-              {qtyInvalid && (
-                <p className="text-[11px] text-red-500 mt-1">1 이상의 정수를 입력하세요.</p>
-              )}
+              {qtyInvalid && <p className="text-[11px] text-red-500 mt-1">0보다 큰 숫자를 입력하세요.</p>}
+              <p className="text-[11px] text-gray-500 mt-1">거래소 최소수량은 백엔드에서 자동 보정됩니다.</p>
             </div>
 
             {/* 레버리지 */}

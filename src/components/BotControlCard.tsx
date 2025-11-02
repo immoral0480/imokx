@@ -10,7 +10,7 @@ type Props = {
   refCode: string;
   isBotRunning: boolean;
   instId: string;                 // ✅ 변경: symbol -> instId (예: "XRP-USDT-SWAP")
-  entryQty: string | number;      // ✅ 변경: entryAmount -> entryQty (계약 수, 정수)
+  coinQty: string | number;      // ✅ 변경: entryAmount -> coinQty (계약 수, 정수)
   hasApi: boolean;                // OKX api key/secret/passphrase 저장 여부
   onRunningChange?: (running: boolean) => void;
 };
@@ -19,7 +19,7 @@ export default function BotControlCard({
   refCode,
   isBotRunning,
   instId,
-  entryQty,
+  coinQty,
   hasApi,
   onRunningChange,
 }: Props) {
@@ -27,7 +27,7 @@ export default function BotControlCard({
   const [showStopModal, setShowStopModal] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  const qtyNum = useMemo(() => Number(entryQty), [entryQty]);
+  const qtyNum = useMemo(() => Number(coinQty), [coinQty]);
   const qtyValid = Number.isInteger(qtyNum) && qtyNum > 0;
 
   const statusLabel = isBotRunning ? "실행 중" : "중지됨";
@@ -44,7 +44,7 @@ export default function BotControlCard({
       return;
     }
     if (!qtyValid) {
-      alert("❗ 진입 계약 수(entry_qty)는 1 이상의 정수여야 합니다.");
+      alert("❗ 진입 계약 수(coin_qty)는 1 이상의 정수여야 합니다.");
       return;
     }
 
@@ -127,7 +127,7 @@ export default function BotControlCard({
                 <span className="font-medium">인스트루먼트:</span> {instId}
               </p>
               <p>
-                <span className="font-medium">진입 계약 수(entry_qty):</span> {entryQty}
+                <span className="font-medium">진입 계약 수(coin_qty):</span> {coinQty}
               </p>
               <p className="text-xs text-gray-500">
                 내 자산 규모에 맞는 계약 수인지 확인해주세요.

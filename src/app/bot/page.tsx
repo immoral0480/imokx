@@ -12,8 +12,8 @@ import { getKSTDateString } from "@/lib/dateUtil";
 
 // 카드 컴포넌트
 import OkxApiCard from "@/components/CoinWApiCard";          // ✅ 변경: CoinW → OKX
-import BotSetupCard from "@/components/BotSetupCard";       // ✅ 이 컴포넌트는 앞서 inst_id/entry_qty로 수정한 버전
-import BotControlCard from "@/components/BotControlCard";   // ✅ 이 컴포넌트도 instId/entryQty로 수정한 버전
+import BotSetupCard from "@/components/BotSetupCard";       // ✅ 이 컴포넌트는 앞서 inst_id/coin_qty로 수정한 버전
+import BotControlCard from "@/components/BotControlCard";   // ✅ 이 컴포넌트도 instId/coinQty로 수정한 버전
 import BotStatusCard from "@/components/BotStatusCard";
 import BotLogCard from "@/components/BotLogCard";
 
@@ -22,7 +22,7 @@ type BotStatus = "running" | "stopped" | "unknown";
 export default function BotPage() {
   // ===== 입력값/설정 =====
   const [instId, setInstId] = useState("XRP-USDT-SWAP");  // ✅ 기본 인스트루먼트
-  const [entryQty, setEntryQty] = useState("1");          // ✅ 계약 수(문자열 상태로 보관 → 저장 시 정수 변환)
+  const [coinQty, setcoinQty] = useState("1");          // ✅ 계약 수(문자열 상태로 보관 → 저장 시 정수 변환)
 
   // ===== API (OKX) =====
   const [okxApiKey, setOkxApiKey] = useState("");
@@ -83,13 +83,13 @@ export default function BotPage() {
 
       const { data: botRow } = await supabase
         .from("bot_settings")
-        .select("inst_id, entry_qty, okx_api_key, okx_api_secret, okx_api_passphrase, enabled")
+        .select("inst_id, coin_qty, okx_api_key, okx_api_secret, okx_api_passphrase, enabled")
         .eq("ref_code", userRow.ref_code)
         .maybeSingle();
 
       if (botRow) {
         setInstId(botRow.inst_id || "XRP-USDT-SWAP");
-        setEntryQty(String(botRow.entry_qty ?? "1"));
+        setcoinQty(String(botRow.coin_qty ?? "1"));
         setOkxApiKey(botRow.okx_api_key ?? "");
         setOkxApiSecret(botRow.okx_api_secret ?? "");
         setOkxApiPassphrase(botRow.okx_api_passphrase ?? "");
@@ -201,10 +201,10 @@ export default function BotPage() {
               refCode={refCode}
               isBotRunning={isBotRunning}
               instId={instId}
-              entryQty={Number(entryQty)}
-              onSaved={({ instId: nextInst, entryQty: nextQty }) => {
+              coinQty={Number(coinQty)}
+              onSaved={({ instId: nextInst, coinQty: nextQty }) => {
                 setInstId(nextInst);
-                setEntryQty(String(nextQty));
+                setcoinQty(String(nextQty));
               }}
             />
           )}
@@ -215,7 +215,7 @@ export default function BotPage() {
               refCode={refCode}
               isBotRunning={isBotRunning}
               instId={instId}
-              entryQty={entryQty}
+              coinQty={coinQty}
               hasApi={hasApi}
               onRunningChange={(running) => setBotStatus(running ? "running" : "stopped")}
             />
