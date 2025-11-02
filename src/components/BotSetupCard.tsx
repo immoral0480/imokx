@@ -51,7 +51,7 @@ export default function BotSetupCard({
     (async () => {
       const { data, error } = await supabase
         .from("bot_settings")
-        .select("inst_id, coin_qty, coin_qty, leverage, pos_mode")
+        .select("inst_id, coin_qty, coin_qty, leverage")
         .eq("ref_code", refCode)
         .maybeSingle();
 
@@ -91,7 +91,6 @@ export default function BotSetupCard({
             inst_id: next,
             tp_diff: d.tp,
             sl_diff: d.sl,
-            pos_mode: "long_short_mode", // ✅ 자동 저장 추가
             updated_at: new Date().toISOString(),
           },
           { onConflict: "ref_code" }
@@ -143,7 +142,6 @@ export default function BotSetupCard({
           inst_id: inst,
           coin_qty: nQty,
           leverage: Math.trunc(lev),
-          pos_mode: "long_short_mode", // ✅ 저장 시 항상 자동 입력
           updated_at: new Date().toISOString(),
         },
         { onConflict: "ref_code" }

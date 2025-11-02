@@ -33,9 +33,9 @@ function CoinWIntroInner() {
           <li className="flex items-start gap-2">
             <Check className="w-4 h-4 mt-[2px] text-green-500" />
             <span className="text-[14px] text-gray-800 leading-5">
-              CoinW{" "}
+              OKX{" "}
               <Link
-                href="https://www.coinw.com/"
+                href="https://www.OKX.com/"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"
@@ -50,7 +50,7 @@ function CoinWIntroInner() {
             <Check className="w-4 h-4 mt-[2px] text-green-500" />
             <span className="text-[14px] text-gray-800 leading-5">
               <Link
-                href="https://www.coinw.com/futures"
+                href="https://www.OKX.com/futures"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"
@@ -63,9 +63,9 @@ function CoinWIntroInner() {
                     <li className="flex items-start gap-2">
             <Check className="w-4 h-4 mt-[2px] text-green-500" />
             <span className="text-[14px] text-gray-800 leading-5">
-              CoinW 계정과{" "}
+              OKX 계정과{" "}
               <Link
-                href="https://www.coinw.com/assets/api"
+                href="https://www.OKX.com/assets/api"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-blue-600 underline"
